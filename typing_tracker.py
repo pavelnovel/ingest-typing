@@ -19,7 +19,7 @@ except ImportError:
 
 
 class TypingTracker:
-    """Minimal typing activity tracker with session detection"""
+    """Minimal typing activity tracker with continuous session"""
     
     def __init__(self, output_dir: str = "/Users/pk/Desktop/content/typing-output"):
         self.output_dir = output_dir
@@ -28,6 +28,7 @@ class TypingTracker:
         self.last_activity = None
         self.keyboard_listener = None
         self.session_gap_seconds = 5  # Add paragraph break after 5 seconds of inactivity
+        self.session_filename = None  # Store the single session filename
         
         # Ensure output directory exists
         os.makedirs(self.output_dir, exist_ok=True)
@@ -49,15 +50,19 @@ class TypingTracker:
         )
         self.keyboard_listener.start()
         
-        # Initialize first session
-        self._start_new_session(datetime.now())
+        # Initialize the continuous session (will create file on first keystroke)
+        self._initialize_session(datetime.now())
         
         return True
     
     def _on_key_press(self, key):
-        """Capture keystroke and manage sessions"""
+        """Capture keystroke and manage continuous session"""
         try:
             timestamp = datetime.now()
+            
+            # Create session file on first keystroke
+            if not self.session_filename:
+                self._create_session_file(timestamp)
             
             # Handle different key types
             if hasattr(key, 'char') and key.char:
@@ -70,7 +75,7 @@ class TypingTracker:
             # Check if we need to add a paragraph break (5+ seconds gap)
             if (self.last_activity and 
                 (timestamp - self.last_activity).total_seconds() > self.session_gap_seconds):
-                # Add paragraph break
+                # Add paragraph break for long gap
                 self.current_session['content'] += '\n\n'
             
             # Add keystroke to current session
@@ -104,8 +109,8 @@ class TypingTracker:
         """Handle key release (minimal processing)"""
         self.last_activity = datetime.now()
     
-    def _start_new_session(self, timestamp: datetime):
-        """Initialize a new typing session"""
+    def _initialize_session(self, timestamp: datetime):
+        """Initialize the continuous session structure"""
         self.current_session = {
             'session_start': timestamp.isoformat(),
             'session_end': None,
@@ -117,9 +122,22 @@ class TypingTracker:
             'last_activity': timestamp.isoformat()
         }
     
+    def _create_session_file(self, timestamp: datetime):
+        """Create the session file when first keystroke is detected"""
+        date_str = timestamp.strftime("%Y-%m-%d")
+        time_str = timestamp.strftime("%I-%M%p").lower()
+        self.session_filename = f"{date_str}_Typing_Session_{time_str}.json"
+        session_filepath = os.path.join(self.output_dir, self.session_filename)
+        
+        print(f"📝 Session started: {self.session_filename}")
+        
+        # Save initial session file
+        with open(session_filepath, 'w') as f:
+            json.dump(self.current_session, f, indent=2)
+    
     def _save_session(self):
-        """Save the current session and add to daily log"""
-        if not self.current_session or self.current_session['character_count'] == 0:
+        """Save the final session when stopping"""
+        if not self.current_session or not self.session_filename:
             return
             
         # Finalize session
@@ -130,52 +148,14 @@ class TypingTracker:
         self.current_session['duration_seconds'] = (end_time - start_time).total_seconds()
         self.current_session['word_count'] = len(self.current_session['content'].split())
         
-        # Create human-readable filename
-        date_str = start_time.strftime("%Y-%m-%d")
-        time_str = start_time.strftime("%I-%M%p").lower()
-        filename = f"{date_str}_Typing_Session_{time_str}.json"
-        
-        # Load or create daily log
-        daily_filename = f"{date_str}_Daily_Typing_Log.json"
-        daily_filepath = os.path.join(self.output_dir, daily_filename)
-        
-        daily_log = self._load_daily_log(daily_filepath)
-        
-        # Add session to daily log
-        daily_log['sessions'].append(dict(self.current_session))
-        daily_log['total_sessions'] += 1
-        daily_log['total_characters'] += self.current_session['character_count']
-        daily_log['total_words'] += self.current_session['word_count']
-        daily_log['total_keystrokes'] += self.current_session['total_keystrokes']
-        daily_log['last_updated'] = datetime.now().isoformat()
-        
-        # Save updated daily log
-        with open(daily_filepath, 'w') as f:
-            json.dump(daily_log, f, indent=2)
+        # Save final session file
+        session_filepath = os.path.join(self.output_dir, self.session_filename)
+        with open(session_filepath, 'w') as f:
+            json.dump(self.current_session, f, indent=2)
         
         print(f"💾 Session saved: {self.current_session['character_count']} chars, {self.current_session['word_count']} words")
+        print(f"📁 File: {self.session_filename}")
     
-    def _load_daily_log(self, filepath: str) -> Dict:
-        """Load existing daily log or create new one"""
-        if os.path.exists(filepath):
-            try:
-                with open(filepath, 'r') as f:
-                    return json.load(f)
-            except:
-                pass
-        
-        # Create new daily log structure
-        date_str = os.path.basename(filepath).split('_')[0]
-        return {
-            'date': date_str,
-            'created': datetime.now().isoformat(),
-            'last_updated': datetime.now().isoformat(),
-            'total_sessions': 0,
-            'total_characters': 0,
-            'total_words': 0,
-            'total_keystrokes': 0,
-            'sessions': []
-        }
     
     def stop_tracking(self):
         """Stop tracking and save final session"""

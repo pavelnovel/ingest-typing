@@ -5,8 +5,9 @@ A lightweight, privacy-focused typing activity tracker that captures your typing
 ## 🎯 What It Does
 
 - **Captures typing activity** across all applications on your computer
-- **Groups typing into sessions** (5-second gaps create new sessions)
-- **Saves daily logs** with human-readable filenames
+- **One continuous session** from start to Ctrl+C
+- **Paragraph breaks** for 5+ second gaps (but same session continues)
+- **Creates session file** only when you start typing
 - **Tracks metrics** like characters, words, keystrokes, and session duration
 - **No AI processing** - just pure activity tracking
 - **Complete privacy** - everything stays local on your machine
@@ -17,39 +18,34 @@ Files are saved to `/Users/pk/Desktop/content/typing-output/` with human-readabl
 
 ```
 typing-output/
-├── 2025-06-03_Daily_Typing_Log.json     # Complete daily summary
-├── 2025-06-03_Typing_Session_09-15am.json
-├── 2025-06-03_Typing_Session_02-30pm.json
-├── 2025-06-03_Typing_Session_04-45pm.json
-└── 2025-06-04_Daily_Typing_Log.json     # Next day starts new file
+├── 2025-06-03_Typing_Session_09-15am.json  # One continuous session per run
+├── 2025-06-03_Typing_Session_02-30pm.json  # New session if restarted
+└── 2025-06-04_Typing_Session_10-45am.json  # Next day session
 ```
+
+**Note:** Each time you run the tracker, it creates ONE session file that continues until you press Ctrl+C.
 
 ## 📊 Data Format
 
-**Daily Log Structure:**
+**Session File Structure:**
 ```json
 {
-  "date": "2025-06-03",
-  "created": "2025-06-03T09:15:30.123456",
-  "last_updated": "2025-06-03T17:45:20.987654",
-  "total_sessions": 8,
-  "total_characters": 4521,
-  "total_words": 892,
+  "session_start": "2025-06-03T09:15:30.123456",
+  "session_end": "2025-06-03T11:45:20.987654",
+  "content": "This is everything I typed...\n\nWith paragraph breaks for 5+ second gaps...\n\nAll in one continuous session until Ctrl+C",
+  "character_count": 4521,
+  "word_count": 892,
   "total_keystrokes": 5103,
-  "sessions": [
-    {
-      "session_start": "2025-06-03T09:15:30.123456",
-      "session_end": "2025-06-03T09:18:45.789012",
-      "content": "Sample typing content from this session...",
-      "character_count": 156,
-      "word_count": 28,
-      "total_keystrokes": 175,
-      "duration_seconds": 195.7,
-      "last_activity": "2025-06-03T09:18:45.789012"
-    }
-  ]
+  "duration_seconds": 8990.5,
+  "last_activity": "2025-06-03T11:45:20.987654"
 }
 ```
+
+**Key Features:**
+- `content`: All your typing with `\n\n` for 5+ second gaps
+- `duration_seconds`: Total time from first keystroke to Ctrl+C
+- `character_count`: Total characters typed (including spaces)
+- `word_count`: Total words in the session
 
 ## 🚀 Quick Start
 
@@ -81,9 +77,9 @@ python typing_tracker.py
 ```
 🔥 Typing tracker started - saving to: /Users/pk/Desktop/content/typing-output
 💡 Press Ctrl+C to stop and save
-⌨️  Start typing to begin capturing sessions...
-💾 Session saved: 156 chars, 28 words
-💾 Session saved: 89 chars, 15 words
+📝 Session started: 2025-06-03_Typing_Session_09-15am.json  (when you start typing)
+💾 Session saved: 1247 chars, 245 words                    (when you press Ctrl+C)
+📁 File: 2025-06-03_Typing_Session_09-15am.json
 ```
 
 **To Stop:**
