@@ -30,6 +30,11 @@ class TypingTracker:
         self.session_gap_seconds = 5  # Add paragraph break after 5 seconds of inactivity
         self.session_filename = None  # Store the single session filename
         
+        # WPM tracking
+        self.word_timestamps = []  # Store (timestamp, word_count) for WPM calculation
+        self.last_stats_display = None
+        self.stats_display_interval = 5 # Show stats every 5 seconds
+        
         # Ensure output directory exists
         os.makedirs(self.output_dir, exist_ok=True)
         
@@ -52,6 +57,11 @@ class TypingTracker:
         
         # Initialize the continuous session (will create file on first keystroke)
         self._initialize_session(datetime.now())
+        
+        # Start background stats display
+        import threading
+        stats_thread = threading.Thread(target=self._stats_display_loop, daemon=True)
+        stats_thread.start()
         
         return True
     
@@ -102,6 +112,18 @@ class TypingTracker:
             self.current_session['total_keystrokes'] += 1
             self.last_activity = timestamp
             
+            # Track words for WPM calculation (on space or newline)
+            if key_type == 'character' and char in [' ', '\r', '\n'] or char == 'space':
+                current_word_count = len(self.current_session['content'].split())
+                self.word_timestamps.append((timestamp, current_word_count))
+                
+                # Keep only last 1 minute of data
+                cutoff_time = timestamp.timestamp() - 60  # 1 minute ago
+                self.word_timestamps = [
+                    (ts, wc) for ts, wc in self.word_timestamps 
+                    if ts.timestamp() > cutoff_time
+                ]
+            
         except Exception as e:
             print(f"Error capturing keystroke: {e}")
     
@@ -134,6 +156,52 @@ class TypingTracker:
         # Save initial session file
         with open(session_filepath, 'w') as f:
             json.dump(self.current_session, f, indent=2)
+    
+    def _calculate_wpm_last_1min(self) -> float:
+        """Calculate WPM for the last 1 minute"""
+        if len(self.word_timestamps) < 2:
+            return 0.0
+        
+        # Get time span and word count for last 1 minute
+        now = datetime.now()
+        cutoff_time = now.timestamp() - 60  # 1 minute ago
+        
+        # Filter to last 1 minute
+        recent_words = [
+            (ts, wc) for ts, wc in self.word_timestamps 
+            if ts.timestamp() > cutoff_time
+        ]
+        
+        if len(recent_words) < 2:
+            return 0.0
+        
+        # Calculate words and time span
+        first_timestamp, first_word_count = recent_words[0]
+        last_timestamp, last_word_count = recent_words[-1]
+        
+        words_typed = last_word_count - first_word_count
+        time_span_minutes = (last_timestamp.timestamp() - first_timestamp.timestamp()) / 60
+        
+        if time_span_minutes <= 0:
+            return 0.0
+        
+        return words_typed / time_span_minutes
+    
+    def _stats_display_loop(self):
+        """Background thread to display typing stats"""
+        while self.is_running:
+            try:
+                time.sleep(self.stats_display_interval)
+                
+                if self.current_session and self.session_filename:
+                    current_words = len(self.current_session['content'].split())
+                    wpm_1min = self._calculate_wpm_last_1min()
+                    
+                    print(f"📊 Words: {current_words} | WPM (1min): {wpm_1min:.1f}")
+                    
+            except Exception as e:
+                print(f"Error in stats display: {e}")
+                time.sleep(10)
     
     def _save_session(self):
         """Save the final session when stopping"""

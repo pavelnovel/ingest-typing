@@ -78,7 +78,11 @@ python typing_tracker.py
 🔥 Typing tracker started - saving to: /Users/pk/Desktop/content/typing-output
 💡 Press Ctrl+C to stop and save
 📝 Session started: 2025-06-03_Typing_Session_09-15am.json  (when you start typing)
+📊 Words: 45 | WPM (5min): 12.3                           (every 30 seconds)
+📊 Words: 89 | WPM (5min): 15.7
+📊 Words: 152 | WPM (5min): 18.2
 💾 Session saved: 1247 chars, 245 words                    (when you press Ctrl+C)
+📊 Final WPM (5min): 22.5
 📁 File: 2025-06-03_Typing_Session_09-15am.json
 ```
 
@@ -102,9 +106,16 @@ self.session_gap_seconds = 10  # 10 seconds instead of 5
 ## 📋 Features
 
 ### Session Detection
-- **Automatic grouping**: Typing separated by 5+ seconds becomes a new session
+- **Continuous session**: One session per program run until Ctrl+C
+- **Paragraph breaks**: 5+ second gaps add `\n\n` to content
 - **Real-time tracking**: Characters, words, and keystrokes counted live
 - **Smart timestamps**: Human-readable filenames with date and time
+
+### Live Statistics
+- **Word count**: Current total words in session (updated live)
+- **WPM calculation**: Rolling 5-minute words-per-minute average
+- **Regular updates**: Stats displayed every 30 seconds during typing
+- **Final summary**: Complete metrics when session ends
 
 ### Content Capture
 - **Full text capture**: Everything you type (locally stored)
